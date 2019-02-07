@@ -169,24 +169,24 @@ class SaveToFilePipeline(object):
         mkdirs(self.saveUserPath)
 
 
-    def process_item(self, item, spider):
+        def process_item(self, item, spider):
         if isinstance(item, Tweet):
-            savePath = os.path.join(self.saveTweetPath, item['ID'])
+            savePath = os.path.join(self.saveTweetPath, "output.txt")
             if os.path.isfile(savePath):
                 pass # simply skip existing items
                 ### or you can rewrite the file, if you don't want to skip:
-                # self.save_to_file(item,savePath)
+                self.save_to_file(item,savePath)
                 # logger.info("Update tweet:%s"%dbItem['url'])
             else:
                 self.save_to_file(item,savePath)
                 logger.debug("Add tweet:%s" %item['url'])
 
         elif isinstance(item, User):
-            savePath = os.path.join(self.saveUserPath, item['ID'])
+            savePath = os.path.join(self.saveUserPath, "output.txt")
             if os.path.isfile(savePath):
                 pass # simply skip existing items
                 ### or you can rewrite the file, if you don't want to skip:
-                # self.save_to_file(item,savePath)
+                self.save_to_file(item,savePath)
                 # logger.info("Update user:%s"%dbItem['screen_name'])
             else:
                 self.save_to_file(item, savePath)
@@ -201,5 +201,6 @@ class SaveToFilePipeline(object):
                 item - a dict like object
                 fname - where to save
         '''
-        with open(fname,'w') as f:
+        with open(fname,'a+') as f:
             json.dump(dict(item), f)
+            f.write("\n")
