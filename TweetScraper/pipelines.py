@@ -5,6 +5,7 @@ import logging
 import pymongo
 import json
 import os
+import sys
 
 # for mysql
 import mysql.connector
@@ -15,6 +16,9 @@ from TweetScraper.utils import mkdirs
 
 
 logger = logging.getLogger(__name__)
+
+#grabs the command line query
+QUERY = sys.argv
 
 class SaveToMongoPipeline(object):
 
@@ -171,7 +175,7 @@ class SaveToFilePipeline(object):
 
     def process_item(self, item, spider):
         if isinstance(item, Tweet):
-            savePath = os.path.join(self.saveTweetPath, "output.txt")
+            savePath = os.path.join(self.saveTweetPath, QUERY[3].split("=")[1] + ".txt")
             if os.path.isfile(savePath):
                 pass # simply skip existing items
                 ### or you can rewrite the file, if you don't want to skip:
@@ -182,7 +186,7 @@ class SaveToFilePipeline(object):
                 logger.debug("Add tweet:%s" %item['url'])
 
         elif isinstance(item, User):
-            savePath = os.path.join(self.saveUserPath, "output.txt")
+            savePath = os.path.join(self.saveUserPath, QUERY[3].split("=")[1] + ".txt")
             if os.path.isfile(savePath):
                 pass # simply skip existing items
                 ### or you can rewrite the file, if you don't want to skip:
