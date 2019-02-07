@@ -169,7 +169,7 @@ class SaveToFilePipeline(object):
         mkdirs(self.saveUserPath)
 
 
-        def process_item(self, item, spider):
+    def process_item(self, item, spider):
         if isinstance(item, Tweet):
             savePath = os.path.join(self.saveTweetPath, "output.txt")
             if os.path.isfile(savePath):
