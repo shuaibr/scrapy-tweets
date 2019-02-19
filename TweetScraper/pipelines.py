@@ -82,7 +82,7 @@ class SaveToFilePipeline(object):
                 logger.debug("Add tweet:%s" %item['url'])
 
         elif isinstance(item, User):
-            savePath = os.path.join(self.saveUserPath, QUERY[3].split("=")[1] + ".txt")
+            savePath = os.path.join(self.saveUserPath, "Users" + ".txt")
             if os.path.isfile(savePath):
                 pass # simply skip existing items
                 ### or you can rewrite the file, if you don't want to skip:

@@ -16,8 +16,9 @@ from datetime import datetime
 
 from TweetScraper.items import Tweet, User
 
-logger = logging.getLogger(__name__)
+from urllib.request import urlopen
 
+logger = logging.getLogger(__name__)
 
 class TweetScraper(CrawlSpider):
     name = 'TweetScraper'
@@ -31,13 +32,26 @@ class TweetScraper(CrawlSpider):
         if not top_tweet:
             self.url = self.url + "&f=tweets"
 
+
+        # temp = "%20"
+        # temp1 = "from%3A"
+        # self.url = self.url + "&q=" + temp1 +"%s" + temp +"since%3A2019-02-01" + temp +"until%3A2019-02-07"
+
         self.url = self.url + "&q=%s&src=typed&max_position=%s"
+        # self.url = self.url + "&q=from@%s%%20since%3A2019-02-10%%20until%3A2019-02-18&src=typed&max_position=%s"
+        self.profile_url = "https://twitter.com/" + self.query
+        # self.url = "https://twitter.com/search?l=en&q=from%3Amohamed%%20since%3A2019-02-10%%20until%3A2019-02-18&src=typd&lang=en"
+
+        # self.url = "https://twitter.com/search?l=&q=from%%3A" + "%s" + temp + "since%3A2019-02-10" + temp + "until%3A2019-02-18&src=typed&max_position=%s"
+
+        # self.test = "https://twitter.com/search?l=&q=from%3Amohamed&src=typd&lang=en"
 
         self.crawl_user = crawl_user
 
     def start_requests(self):
         url = self.url % (quote(self.query), '')
         yield http.Request(url, callback=self.parse_page)
+        yield http.Request(self.profile_url, callback=self.parse_profile_page)
 
     def parse_page(self, response):
         # inspect_response(response, self)
@@ -51,6 +65,26 @@ class TweetScraper(CrawlSpider):
         min_position = min_position.replace("+","%2B")
         url = self.url % (quote(self.query), min_position)
         yield http.Request(url, callback=self.parse_page)
+
+    def parse_profile_page(self, response):
+        # print(response)
+        response = urlopen(self.profile_url,)
+        data = response.read().decode("utf-8")
+        page = Selector(text=data)
+        items = page.xpath('//span/@data-count')
+
+        if self.crawl_user:
+            ### get user info
+            user = User()
+            user['ID'] = page.xpath('.//div/@data-user-id').extract()[0]
+            user['name'] = page.xpath('.//div/@data-name').extract()[0]
+            user['screen_name'] = page.xpath('.//div/@data-screen-name').extract()[0]
+
+            user['number_of_tweets'] = items.extract()[0]
+            user['following'] = items.extract()[1]
+            user['followers'] = items.extract()[2]
+            user['likes'] = items.extract()[3]
+            yield user
 
     def parse_tweets_block(self, html_page):
         page = Selector(text=html_page)
@@ -150,15 +184,6 @@ class TweetScraper(CrawlSpider):
                 tweet['user_id'] = item.xpath('.//@data-user-id').extract()[0]
                 yield tweet
 
-                if self.crawl_user:
-                    ### get user info
-                    user = User()
-                    user['ID'] = tweet['user_id']
-                    user['name'] = item.xpath('.//@data-name').extract()[0]
-                    user['screen_name'] = item.xpath('.//@data-screen-name').extract()[0]
-                    user['avatar'] = \
-                        item.xpath('.//div[@class="content"]/div[@class="stream-item-header"]/a/img/@src').extract()[0]
-                    yield user
             except:
                 logger.error("Error tweet:\n%s" % item.xpath('.').extract()[0])
                 # raise

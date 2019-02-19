@@ -33,4 +33,8 @@ class User(Item):
     ID = Field()            # user id
     name = Field()          # user name
     screen_name = Field()   # user screen name
-    avatar = Field()        # avator url
+
+    number_of_tweets = Field()
+    following = Field()
+    followers = Field()
+    likes = Field()
