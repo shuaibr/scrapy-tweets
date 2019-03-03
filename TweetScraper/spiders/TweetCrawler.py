@@ -52,65 +52,20 @@ class TweetScraper(CrawlSpider):
         if not top_tweet:
             self.url = self.url + "&f=tweets"
 
-        # temp = "%20"
-        # temp1 = "from%3A"
-        # self.url = self.url + "&q=" + temp1 +"%s" + temp +"since%3A2019-02-01" + temp +"until%3A2019-02-07"
-
         self.url = self.url + "&q=from:" + "%s&src=typed&max_position=%s"
-        # self.url = self.url + "&q=from@%s%%20since%3A2019-02-10%%20until%3A2019-02-18&src=typed&max_position=%s"
-        # self.url = self.url + "&q="  + self.query[1:]
         self.profile_url = "https://twitter.com/" + self.query[1:]
         self.profile_following = "https://twitter.com/" + self.query[1:] + "/following/"
-        # self.url = "https://twitter.com/search?l=en&q=from%3Amohamed%%20since%3A2019-02-10%%20until%3A2019-02-18&src=typd&lang=en"
-
-        # self.url = "https://twitter.com/search?l=&q=from%%3A" + "%s" + temp + "since%3A2019-02-10" + temp + "until%3A2019-02-18&src=typed&max_position=%s"
-
-        # self.test = "https://twitter.com/search?l=&q=from%3Amohamed&src=typd&lang=en"
 
         self.crawl_user = crawl_user
 
     def start_requests(self):
         if self.following:
-            # with requests.Session() as s:
-            #     r = s.get("https://twitter.com/login")
-            #     soup = BeautifulSoup(r.text,"lxml")
-
-            #     token = soup.select_one("[name='authenticity_token']")['value']
-
-            #     payload={
-            #     'session[username_or_email]':'bvams2019@gmail.com',
-            #     'session[password]':'ilias2019!',
-            #     'authenticity_token':token,
-            #     'ui_metrics':'{"rf":{"c6fc1daac14ef08ff96ef7aa26f8642a197bfaad9c65746a6592d55075ef01af":3,"a77e6e7ab2880be27e81075edd6cac9c0b749cc266e1cea17ffc9670a9698252":-1,"ad3dbab6c68043a1127defab5b7d37e45d17f56a6997186b3a08a27544b606e8":252,"ac2624a3b325d64286579b4a61dd242539a755a5a7fa508c44eb1c373257d569":-125},"s":"fTQyo6c8mP7d6L8Og_iS8ulzPObBOzl3Jxa2jRwmtbOBJSk4v8ClmBbF9njbZHRLZx0mTAUPsImZ4OnbZV95f-2gD6-03SZZ8buYdTDkwV-xItDu5lBVCQ_EAiv3F5EuTpVl7F52FTIykWowpNIzowvh_bhCM0_6ReTGj6990294mIKUFM_mPHCyZxkIUAtC3dVeYPXff92alrVFdrncrO8VnJHOlm9gnSwTLcbHvvpvC0rvtwapSbTja-cGxhxBdekFhcoFo8edCBiMB9pip-VoquZ-ddbQEbpuzE7xBhyk759yQyN4NmRFwdIjjedWYtFyOiy_XtGLp6zKvMjF8QAAAWE468LY"}',
-            #     'scribe_log':'',
-            #     'redirect_after_login':'https://twitter.com/katyperry/following',
-            #     'authenticity_token':token,
-            #     'remember_me':1
-            #     }
-            #     headers={
-            #     'accept':'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-            #     'content-type':'application/x-www-form-urlencoded',
-            #     'origin':'https://twitter.com',
-            #     'referer':'https://twitter.com/login',
-            #     'upgrade-insecure-requests':'1',
-            #     'user-agent':'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36'
-            #     }
-            #     res = s.post("https://twitter.com/sessions",data=payload,headers=headers)
-            #     soup = BeautifulSoup(res.text,"lxml")
 
             browser = webdriver.Chrome('D:\Downloads\chromedriver_win32\chromedriver.exe')
             browser.get("https://twitter.com/katyperry/following")
             action = action_chains.ActionChains(browser)
-
-            # open up the developer console, mine on MAC, yours may be diff key combo
-            # action.send_keys(keys.Keys.CONTROL,keys.Keys.SHIFT,'i')
-            # action.perform()
+            
             time.sleep(2)
-            # action.send_keys(keys.Keys.ENTER)
-            # inject the JavaScript...
-            # action.send_keys("document.querySelectorAll('label.boxed')[1].click()"+keys.Keys.ENTER)
-            # action.perform()
-            # browser.execute_script("document.querySelectorAll('label.boxed')[1].click()")
 
             username = browser.find_element_by_css_selector('.js-username-field.email-input.js-initial-focus')
             username.send_keys('bvams2019@gmail.com')
@@ -121,16 +76,6 @@ class TweetScraper(CrawlSpider):
             form = browser.find_element_by_css_selector('.submit.EdgeButton.EdgeButton--primary.EdgeButtom--medium')
             form.submit()
 
-            # elem = browser.find_element_by_class_name("ProfileCard-screenname")
-            # elem = browser.find_element_by_xpath("//span[@class='username u-dir']").click()
-            # browser.implicitly_wait(6000000)
-            
-            no_of_pagedowns = 20
-
-            # while no_of_pagedowns:
-            #     action.send_keys(keys.Keys.PAGE_DOWN)
-            #     time.sleep(0.2)
-            #     no_of_pagedowns-=1
             SCROLL_PAUSE_TIME = 0.5
 
             # Get scroll height
@@ -148,16 +93,10 @@ class TweetScraper(CrawlSpider):
                 if new_height == last_height:
                     break
                 last_height = new_height
-            #     element = browser.find_element_by_xpath("//div[@class='GridTimeline-end has-items']")
-            # action.move_to_element(element).perform()
-            # element = browser.find_elements_by_class_name('Grid Grid--withGutter')
-            # browser.location_once_scrolled_into_view
+
             element = browser.find_element_by_xpath("//body")
-            # action.move_to_element(element).perform()
             page = Selector(text=element.text)
-            # items = page.xpath('text()')
             info = (element.text).split()
-            # print((element.text).split(), "saklfjslfjolsjfdlkiskjfkl")
 
             
             self.saveUserPath = settings['SAVE_USER_FOLLOWERS_PATH']
@@ -169,21 +108,6 @@ class TweetScraper(CrawlSpider):
                         print(i)
                         f.write(i)
                         f.write("\n")
-                # try:
-                #     # element = WebDriverWait(browser, 20).until(
-                #     #     EC.element_to_be_clickable((By.XPATH, "//div"))
-                #     # )
-                #     element = browser.find_element_by_xpath('//div')
-                #     print(element.text.split(" "), "saklfjslfjolsjfdlkiskjfkl")
-                #     # element.click()
-                # finally:
-                #     browser.quit()
-
-            # post_elems = browser.find_elements_by_class_name("post-item-title")
-
-            # for item in soup.select(".u-linkComplex-target"):
-            #     print(item.text)
-            # yield http.Request(url, callback=self.scrap_following)
         else:
             url = self.url % (quote(self.query), '')
             yield http.Request(url, callback=self.parse_page)
@@ -194,9 +118,7 @@ class TweetScraper(CrawlSpider):
         print(response)
         response = urlopen(self.profile_following,)
         data = response.read().decode("utf-8")
-        # print(data)
         page = Selector(text=data)
-        # print(page.xpath("//"))
 
     def parse_page(self, response):
         # inspect_response(response, self)
