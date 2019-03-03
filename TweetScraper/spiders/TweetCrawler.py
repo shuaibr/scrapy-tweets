@@ -7,6 +7,8 @@ import re
 import json
 import time
 import logging
+import requests
+from bs4 import BeautifulSoup
 try:
     from urllib import quote  # Python 2.X
 except ImportError:
@@ -24,22 +26,26 @@ class TweetScraper(CrawlSpider):
     name = 'TweetScraper'
     allowed_domains = ['twitter.com']
 
-    def __init__(self, query='', lang='', crawl_user=False, top_tweet=False):
+    def __init__(self, query='', lang='', crawl_user=False, top_tweet=False, following=False):
 
+        #command used to start project
+        #scrapy crawl TweetScraper -a query="foo,#bar"
         self.query = query
+        self.following = following
         self.url = "https://twitter.com/i/search/timeline?l={}".format(lang)
 
         if not top_tweet:
             self.url = self.url + "&f=tweets"
 
-
         # temp = "%20"
         # temp1 = "from%3A"
         # self.url = self.url + "&q=" + temp1 +"%s" + temp +"since%3A2019-02-01" + temp +"until%3A2019-02-07"
 
-        self.url = self.url + "&q=%s&src=typed&max_position=%s"
+        self.url = self.url + "&q=from:" + "%s&src=typed&max_position=%s"
         # self.url = self.url + "&q=from@%s%%20since%3A2019-02-10%%20until%3A2019-02-18&src=typed&max_position=%s"
-        self.profile_url = "https://twitter.com/" + self.query
+        # self.url = self.url + "&q="  + self.query[1:]
+        self.profile_url = "https://twitter.com/" + self.query[1:]
+        self.profile_following = "https://twitter.com/" + self.query[1:] + "/following/"
         # self.url = "https://twitter.com/search?l=en&q=from%3Amohamed%%20since%3A2019-02-10%%20until%3A2019-02-18&src=typd&lang=en"
 
         # self.url = "https://twitter.com/search?l=&q=from%%3A" + "%s" + temp + "since%3A2019-02-10" + temp + "until%3A2019-02-18&src=typed&max_position=%s"
@@ -49,9 +55,51 @@ class TweetScraper(CrawlSpider):
         self.crawl_user = crawl_user
 
     def start_requests(self):
-        url = self.url % (quote(self.query), '')
-        yield http.Request(url, callback=self.parse_page)
-        yield http.Request(self.profile_url, callback=self.parse_profile_page)
+        if self.following:
+            with requests.Session() as s:
+                r = s.get("https://twitter.com/login")
+                soup = BeautifulSoup(r.text,"lxml")
+
+                token = soup.select_one("[name='authenticity_token']")['value']
+
+                payload={
+                'session[username_or_email]':'bvams2019@gmail.com',
+                'session[password]':'ilias2019!',
+                'authenticity_token':token,
+                'ui_metrics':'{"rf":{"c6fc1daac14ef08ff96ef7aa26f8642a197bfaad9c65746a6592d55075ef01af":3,"a77e6e7ab2880be27e81075edd6cac9c0b749cc266e1cea17ffc9670a9698252":-1,"ad3dbab6c68043a1127defab5b7d37e45d17f56a6997186b3a08a27544b606e8":252,"ac2624a3b325d64286579b4a61dd242539a755a5a7fa508c44eb1c373257d569":-125},"s":"fTQyo6c8mP7d6L8Og_iS8ulzPObBOzl3Jxa2jRwmtbOBJSk4v8ClmBbF9njbZHRLZx0mTAUPsImZ4OnbZV95f-2gD6-03SZZ8buYdTDkwV-xItDu5lBVCQ_EAiv3F5EuTpVl7F52FTIykWowpNIzowvh_bhCM0_6ReTGj6990294mIKUFM_mPHCyZxkIUAtC3dVeYPXff92alrVFdrncrO8VnJHOlm9gnSwTLcbHvvpvC0rvtwapSbTja-cGxhxBdekFhcoFo8edCBiMB9pip-VoquZ-ddbQEbpuzE7xBhyk759yQyN4NmRFwdIjjedWYtFyOiy_XtGLp6zKvMjF8QAAAWE468LY"}',
+                'scribe_log':'',
+                'redirect_after_login':'',
+                'authenticity_token':token,
+                'remember_me':1
+                }
+                headers={
+                'accept':'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+                'content-type':'application/x-www-form-urlencoded',
+                'origin':'https://twitter.com',
+                'referer':'https://twitter.com/login',
+                'upgrade-insecure-requests':'1',
+                'user-agent':'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36'
+                }
+                res = s.post("https://twitter.com/sessions",data=payload,headers=headers)
+                res = s.post("https://twitter.com/katyperry/following",data=payload,headers=headers)
+                soup = BeautifulSoup(res.text,"lxml")
+                print(soup)
+                for item in soup.select(".tweet-text"):
+                    print(item.text)
+            # yield http.Request(url, callback=self.scrap_following)
+        else:
+            url = self.url % (quote(self.query), '')
+            yield http.Request(url, callback=self.parse_page)
+            yield http.Request(self.profile_url, callback=self.parse_profile_page)
+
+    def scrap_following(self,response):
+        print("fsfsdf")
+        print(response)
+        response = urlopen(self.profile_following,)
+        data = response.read().decode("utf-8")
+        # print(data)
+        page = Selector(text=data)
+        # print(page.xpath("//"))
 
     def parse_page(self, response):
         # inspect_response(response, self)
