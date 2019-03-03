@@ -6,9 +6,16 @@ from scrapy.shell import inspect_response  # for debugging
 import re
 import json
 import time
+import os
 import logging
 import requests
+
 from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common import action_chains, keys
 try:
     from urllib import quote  # Python 2.X
 except ImportError:
@@ -17,10 +24,17 @@ except ImportError:
 from datetime import datetime
 
 from TweetScraper.items import Tweet, User
+from TweetScraper.utils import mkdirs
 
 from urllib.request import urlopen
 
 logger = logging.getLogger(__name__)
+
+#REQUIRED libraries
+#pip install requests
+#pip install beautifulsoup4
+#pip install selenium
+#https://sites.google.com/a/chromium.org/chromedriver/downloads
 
 class TweetScraper(CrawlSpider):
     name = 'TweetScraper'
@@ -30,6 +44,7 @@ class TweetScraper(CrawlSpider):
 
         #command used to start project
         #scrapy crawl TweetScraper -a query="foo,#bar"
+        #scrapy crawl TweetScraper -a query="@katyperry" -a following=True
         self.query = query
         self.following = following
         self.url = "https://twitter.com/i/search/timeline?l={}".format(lang)
@@ -56,36 +71,118 @@ class TweetScraper(CrawlSpider):
 
     def start_requests(self):
         if self.following:
-            with requests.Session() as s:
-                r = s.get("https://twitter.com/login")
-                soup = BeautifulSoup(r.text,"lxml")
+            # with requests.Session() as s:
+            #     r = s.get("https://twitter.com/login")
+            #     soup = BeautifulSoup(r.text,"lxml")
 
-                token = soup.select_one("[name='authenticity_token']")['value']
+            #     token = soup.select_one("[name='authenticity_token']")['value']
 
-                payload={
-                'session[username_or_email]':'bvams2019@gmail.com',
-                'session[password]':'ilias2019!',
-                'authenticity_token':token,
-                'ui_metrics':'{"rf":{"c6fc1daac14ef08ff96ef7aa26f8642a197bfaad9c65746a6592d55075ef01af":3,"a77e6e7ab2880be27e81075edd6cac9c0b749cc266e1cea17ffc9670a9698252":-1,"ad3dbab6c68043a1127defab5b7d37e45d17f56a6997186b3a08a27544b606e8":252,"ac2624a3b325d64286579b4a61dd242539a755a5a7fa508c44eb1c373257d569":-125},"s":"fTQyo6c8mP7d6L8Og_iS8ulzPObBOzl3Jxa2jRwmtbOBJSk4v8ClmBbF9njbZHRLZx0mTAUPsImZ4OnbZV95f-2gD6-03SZZ8buYdTDkwV-xItDu5lBVCQ_EAiv3F5EuTpVl7F52FTIykWowpNIzowvh_bhCM0_6ReTGj6990294mIKUFM_mPHCyZxkIUAtC3dVeYPXff92alrVFdrncrO8VnJHOlm9gnSwTLcbHvvpvC0rvtwapSbTja-cGxhxBdekFhcoFo8edCBiMB9pip-VoquZ-ddbQEbpuzE7xBhyk759yQyN4NmRFwdIjjedWYtFyOiy_XtGLp6zKvMjF8QAAAWE468LY"}',
-                'scribe_log':'',
-                'redirect_after_login':'',
-                'authenticity_token':token,
-                'remember_me':1
-                }
-                headers={
-                'accept':'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-                'content-type':'application/x-www-form-urlencoded',
-                'origin':'https://twitter.com',
-                'referer':'https://twitter.com/login',
-                'upgrade-insecure-requests':'1',
-                'user-agent':'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36'
-                }
-                res = s.post("https://twitter.com/sessions",data=payload,headers=headers)
-                res = s.post("https://twitter.com/katyperry/following",data=payload,headers=headers)
-                soup = BeautifulSoup(res.text,"lxml")
-                print(soup)
-                for item in soup.select(".tweet-text"):
-                    print(item.text)
+            #     payload={
+            #     'session[username_or_email]':'bvams2019@gmail.com',
+            #     'session[password]':'ilias2019!',
+            #     'authenticity_token':token,
+            #     'ui_metrics':'{"rf":{"c6fc1daac14ef08ff96ef7aa26f8642a197bfaad9c65746a6592d55075ef01af":3,"a77e6e7ab2880be27e81075edd6cac9c0b749cc266e1cea17ffc9670a9698252":-1,"ad3dbab6c68043a1127defab5b7d37e45d17f56a6997186b3a08a27544b606e8":252,"ac2624a3b325d64286579b4a61dd242539a755a5a7fa508c44eb1c373257d569":-125},"s":"fTQyo6c8mP7d6L8Og_iS8ulzPObBOzl3Jxa2jRwmtbOBJSk4v8ClmBbF9njbZHRLZx0mTAUPsImZ4OnbZV95f-2gD6-03SZZ8buYdTDkwV-xItDu5lBVCQ_EAiv3F5EuTpVl7F52FTIykWowpNIzowvh_bhCM0_6ReTGj6990294mIKUFM_mPHCyZxkIUAtC3dVeYPXff92alrVFdrncrO8VnJHOlm9gnSwTLcbHvvpvC0rvtwapSbTja-cGxhxBdekFhcoFo8edCBiMB9pip-VoquZ-ddbQEbpuzE7xBhyk759yQyN4NmRFwdIjjedWYtFyOiy_XtGLp6zKvMjF8QAAAWE468LY"}',
+            #     'scribe_log':'',
+            #     'redirect_after_login':'https://twitter.com/katyperry/following',
+            #     'authenticity_token':token,
+            #     'remember_me':1
+            #     }
+            #     headers={
+            #     'accept':'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+            #     'content-type':'application/x-www-form-urlencoded',
+            #     'origin':'https://twitter.com',
+            #     'referer':'https://twitter.com/login',
+            #     'upgrade-insecure-requests':'1',
+            #     'user-agent':'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36'
+            #     }
+            #     res = s.post("https://twitter.com/sessions",data=payload,headers=headers)
+            #     soup = BeautifulSoup(res.text,"lxml")
+
+            browser = webdriver.Chrome('D:\Downloads\chromedriver_win32\chromedriver.exe')
+            browser.get("https://twitter.com/katyperry/following")
+            action = action_chains.ActionChains(browser)
+
+            # open up the developer console, mine on MAC, yours may be diff key combo
+            # action.send_keys(keys.Keys.CONTROL,keys.Keys.SHIFT,'i')
+            # action.perform()
+            time.sleep(2)
+            # action.send_keys(keys.Keys.ENTER)
+            # inject the JavaScript...
+            # action.send_keys("document.querySelectorAll('label.boxed')[1].click()"+keys.Keys.ENTER)
+            # action.perform()
+            # browser.execute_script("document.querySelectorAll('label.boxed')[1].click()")
+
+            username = browser.find_element_by_css_selector('.js-username-field.email-input.js-initial-focus')
+            username.send_keys('bvams2019@gmail.com')
+
+            password = browser.find_element_by_css_selector('.js-password-field')
+            password.send_keys('ilias2019!')
+
+            form = browser.find_element_by_css_selector('.submit.EdgeButton.EdgeButton--primary.EdgeButtom--medium')
+            form.submit()
+
+            # elem = browser.find_element_by_class_name("ProfileCard-screenname")
+            # elem = browser.find_element_by_xpath("//span[@class='username u-dir']").click()
+            # browser.implicitly_wait(6000000)
+            
+            no_of_pagedowns = 20
+
+            # while no_of_pagedowns:
+            #     action.send_keys(keys.Keys.PAGE_DOWN)
+            #     time.sleep(0.2)
+            #     no_of_pagedowns-=1
+            SCROLL_PAUSE_TIME = 0.5
+
+            # Get scroll height
+            last_height = browser.execute_script("return document.body.scrollHeight")
+            
+            while True:
+                # Scroll down to bottom
+                browser.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+
+                # Wait to load page
+                time.sleep(SCROLL_PAUSE_TIME)
+
+                # Calculate new scroll height and compare with last scroll height
+                new_height = browser.execute_script("return document.body.scrollHeight")
+                if new_height == last_height:
+                    break
+                last_height = new_height
+            #     element = browser.find_element_by_xpath("//div[@class='GridTimeline-end has-items']")
+            # action.move_to_element(element).perform()
+            # element = browser.find_elements_by_class_name('Grid Grid--withGutter')
+            # browser.location_once_scrolled_into_view
+            element = browser.find_element_by_xpath("//body")
+            # action.move_to_element(element).perform()
+            page = Selector(text=element.text)
+            # items = page.xpath('text()')
+            info = (element.text).split()
+            # print((element.text).split(), "saklfjslfjolsjfdlkiskjfkl")
+
+            
+            self.saveUserPath = settings['SAVE_USER_FOLLOWERS_PATH']
+            mkdirs(self.saveUserPath)
+            savePath = os.path.join(self.saveUserPath, "following" + ".txt")
+            with open(savePath,'a+') as f:
+                for i in info:
+                    if i.startswith('@') and len(i) > 1 and i != self.query:
+                        print(i)
+                        f.write(i)
+                        f.write("\n")
+                # try:
+                #     # element = WebDriverWait(browser, 20).until(
+                #     #     EC.element_to_be_clickable((By.XPATH, "//div"))
+                #     # )
+                #     element = browser.find_element_by_xpath('//div')
+                #     print(element.text.split(" "), "saklfjslfjolsjfdlkiskjfkl")
+                #     # element.click()
+                # finally:
+                #     browser.quit()
+
+            # post_elems = browser.find_elements_by_class_name("post-item-title")
+
+            # for item in soup.select(".u-linkComplex-target"):
+            #     print(item.text)
             # yield http.Request(url, callback=self.scrap_following)
         else:
             url = self.url % (quote(self.query), '')
