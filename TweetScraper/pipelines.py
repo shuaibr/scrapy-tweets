@@ -65,8 +65,10 @@ class SaveToFilePipeline(object):
     def __init__(self):
         self.saveTweetPath = settings['SAVE_TWEET_PATH']
         self.saveUserPath = settings['SAVE_USER_PATH']
+        self.savefollowersPath = settings['SAVE_USER_FOLLOWERS_PATH']
         mkdirs(self.saveTweetPath) # ensure the path exists
         mkdirs(self.saveUserPath)
+        mkdirs(self.savefollowersPath)
 
 
     def process_item(self, item, spider):

@@ -6,6 +6,7 @@ from scrapy.shell import inspect_response  # for debugging
 import re
 import json
 import time
+import sys
 import os
 import logging
 import requests
@@ -34,7 +35,11 @@ logger = logging.getLogger(__name__)
 #pip install requests
 #pip install beautifulsoup4
 #pip install selenium
+#http://phantomjs.org/download.html
 #https://sites.google.com/a/chromium.org/chromedriver/downloads
+
+#command used to start project
+#scrapy crawl TweetScraper -a query="@katyperry"
 
 class TweetScraper(CrawlSpider):
     name = 'TweetScraper'
@@ -42,9 +47,6 @@ class TweetScraper(CrawlSpider):
 
     def __init__(self, query='', lang='', crawl_user=False, top_tweet=False, following=False):
 
-        #command used to start project
-        #scrapy crawl TweetScraper -a query="foo,#bar"
-        #scrapy crawl TweetScraper -a query="@katyperry" -a following=True
         self.query = query
         self.following = following
         self.url = "https://twitter.com/i/search/timeline?l={}".format(lang)
@@ -59,10 +61,10 @@ class TweetScraper(CrawlSpider):
         self.crawl_user = crawl_user
 
     def start_requests(self):
-        if self.following:
+        if not self.check(self.query):
 
-            browser = webdriver.Chrome('D:\Downloads\chromedriver_win32\chromedriver.exe')
-            browser.get("https://twitter.com/katyperry/following")
+            browser = webdriver.PhantomJS(executable_path='C:/Users/moham/Desktop/phantomjs-2.1.1-windows/bin/phantomjs')
+            browser.get("https://twitter.com/" + self.query[1:] + "/following")
             action = action_chains.ActionChains(browser)
             
             time.sleep(2)
@@ -77,7 +79,6 @@ class TweetScraper(CrawlSpider):
             form.submit()
 
             SCROLL_PAUSE_TIME = 0.5
-
             # Get scroll height
             last_height = browser.execute_script("return document.body.scrollHeight")
             
@@ -98,24 +99,26 @@ class TweetScraper(CrawlSpider):
             page = Selector(text=element.text)
             info = (element.text).split()
 
-            
             self.saveUserPath = settings['SAVE_USER_FOLLOWERS_PATH']
             mkdirs(self.saveUserPath)
             savePath = os.path.join(self.saveUserPath, "following" + ".txt")
             with open(savePath,'a+') as f:
                 for i in info:
                     if i.startswith('@') and len(i) > 1 and i != self.query:
-                        print(i)
                         f.write(i)
                         f.write("\n")
-        else:
+            savePath = os.path.join(self.saveUserPath, "scrapped_users" + ".txt")        
+            with open(savePath,'a+') as f:
+                f.write(self.query)
+                f.write("\n")
+     
             url = self.url % (quote(self.query), '')
             yield http.Request(url, callback=self.parse_page)
+            # if self.crawl_user:
             yield http.Request(self.profile_url, callback=self.parse_profile_page)
 
+
     def scrap_following(self,response):
-        print("fsfsdf")
-        print(response)
         response = urlopen(self.profile_following,)
         data = response.read().decode("utf-8")
         page = Selector(text=data)
@@ -134,24 +137,21 @@ class TweetScraper(CrawlSpider):
         yield http.Request(url, callback=self.parse_page)
 
     def parse_profile_page(self, response):
-        # print(response)
         response = urlopen(self.profile_url,)
         data = response.read().decode("utf-8")
         page = Selector(text=data)
+        items_labels = page.xpath('//span[@class="ProfileNav-label"]/text()')
         items = page.xpath('//span/@data-count')
 
-        if self.crawl_user:
-            ### get user info
-            user = User()
-            user['ID'] = page.xpath('.//div/@data-user-id').extract()[0]
-            user['name'] = page.xpath('.//div/@data-name').extract()[0]
-            user['screen_name'] = page.xpath('.//div/@data-screen-name').extract()[0]
+        user = User()
+        user['ID'] = page.xpath('.//div/@data-user-id').extract()[0]
+        user['name'] = page.xpath('.//div/@data-name').extract()[0]
+        user['screen_name'] = page.xpath('.//div/@data-screen-name').extract()[0]
 
-            user['number_of_tweets'] = items.extract()[0]
-            user['following'] = items.extract()[1]
-            user['followers'] = items.extract()[2]
-            user['likes'] = items.extract()[3]
-            yield user
+        for i in range(0, len(items_labels)-1):
+            if items_labels[i].extract() != "Lists" and items_labels[i].extract() != "Moments" :
+                user[items_labels[i].extract()] = items.extract()[i]
+        yield user
 
     def parse_tweets_block(self, html_page):
         page = Selector(text=html_page)
@@ -264,3 +264,14 @@ class TweetScraper(CrawlSpider):
     def get_query(self):
         return self.query
 
+
+    def check(self, stringToMatch):
+        saveUserPath = settings['SAVE_USER_FOLLOWERS_PATH']
+        mkdirs(saveUserPath)
+        savePath = os.path.join(saveUserPath, "scrapped_users" + ".txt")
+        with open(savePath, 'a+') as file:
+            for line in file:
+                if stringToMatch == line:
+                    return True
+            return False
+        return False

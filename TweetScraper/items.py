@@ -34,7 +34,8 @@ class User(Item):
     name = Field()          # user name
     screen_name = Field()   # user screen name
 
-    number_of_tweets = Field()
-    following = Field()
-    followers = Field()
-    likes = Field()
+    Tweets = Field()
+    Following = Field()
+    Followers = Field()
+    Likes = Field()
+    
