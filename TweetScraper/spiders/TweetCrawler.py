@@ -6,12 +6,11 @@ from scrapy.shell import inspect_response  # for debugging
 import re
 import json
 import time
-import sys
 import os
 import logging
 import requests
 
-from bs4 import BeautifulSoup
+# from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -33,9 +32,10 @@ logger = logging.getLogger(__name__)
 
 #REQUIRED libraries
 #pip install requests
-#pip install beautifulsoup4
 #pip install selenium
 #http://phantomjs.org/download.html
+
+#might use
 #https://sites.google.com/a/chromium.org/chromedriver/downloads
 
 #command used to start project
@@ -45,10 +45,9 @@ class TweetScraper(CrawlSpider):
     name = 'TweetScraper'
     allowed_domains = ['twitter.com']
 
-    def __init__(self, query='', lang='', crawl_user=False, top_tweet=False, following=False):
+    def __init__(self, query='', lang='', crawl_user=False, top_tweet=False):
 
         self.query = query
-        self.following = following
         self.url = "https://twitter.com/i/search/timeline?l={}".format(lang)
 
         if not top_tweet:
@@ -60,68 +59,9 @@ class TweetScraper(CrawlSpider):
 
         self.crawl_user = crawl_user
 
-    def start_requests(self):
-        if not self.check(self.query):
-
-            browser = webdriver.PhantomJS(executable_path='C:/Users/moham/Desktop/phantomjs-2.1.1-windows/bin/phantomjs')
-            browser.get("https://twitter.com/" + self.query[1:] + "/following")
-            action = action_chains.ActionChains(browser)
-            
-            time.sleep(2)
-
-            username = browser.find_element_by_css_selector('.js-username-field.email-input.js-initial-focus')
-            username.send_keys('bvams2019@gmail.com')
-
-            password = browser.find_element_by_css_selector('.js-password-field')
-            password.send_keys('ilias2019!')
-
-            form = browser.find_element_by_css_selector('.submit.EdgeButton.EdgeButton--primary.EdgeButtom--medium')
-            form.submit()
-
-            SCROLL_PAUSE_TIME = 0.5
-            # Get scroll height
-            last_height = browser.execute_script("return document.body.scrollHeight")
-            
-            while True:
-                # Scroll down to bottom
-                browser.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-
-                # Wait to load page
-                time.sleep(SCROLL_PAUSE_TIME)
-
-                # Calculate new scroll height and compare with last scroll height
-                new_height = browser.execute_script("return document.body.scrollHeight")
-                if new_height == last_height:
-                    break
-                last_height = new_height
-
-            element = browser.find_element_by_xpath("//body")
-            page = Selector(text=element.text)
-            info = (element.text).split()
-
-            self.saveUserPath = settings['SAVE_USER_FOLLOWERS_PATH']
-            mkdirs(self.saveUserPath)
-            savePath = os.path.join(self.saveUserPath, "following" + ".txt")
-            with open(savePath,'a+') as f:
-                for i in info:
-                    if i.startswith('@') and len(i) > 1 and i != self.query:
-                        f.write(i)
-                        f.write("\n")
-            savePath = os.path.join(self.saveUserPath, "scrapped_users" + ".txt")        
-            with open(savePath,'a+') as f:
-                f.write(self.query)
-                f.write("\n")
-     
-            url = self.url % (quote(self.query), '')
-            yield http.Request(url, callback=self.parse_page)
-            # if self.crawl_user:
+    def start_requests(self):   
+        if not self.check(self.query + "\n"): 
             yield http.Request(self.profile_url, callback=self.parse_profile_page)
-
-
-    def scrap_following(self,response):
-        response = urlopen(self.profile_following,)
-        data = response.read().decode("utf-8")
-        page = Selector(text=data)
 
     def parse_page(self, response):
         # inspect_response(response, self)
@@ -138,20 +78,108 @@ class TweetScraper(CrawlSpider):
 
     def parse_profile_page(self, response):
         response = urlopen(self.profile_url,)
+        page, result = self.check_if_account_protected(response)
+        print("fsdfds")
+        temp = []
+        temp_list = []
+
+        if(not result):
+            # data = response.read().decode("utf-8")
+            print("hello")
+            # page = Selector(text=data)
+            items_labels = page.xpath('//span[@class="ProfileNav-label"]/text()')
+            items = page.xpath('//span/@data-count')
+            
+
+            for i in range(0, len(items_labels)-1):
+                temp.append(items_labels[i].extract())
+
+            for i in range(0, len(items)):
+                temp_list.append(items[i].extract())
+
+            if "Followers" in temp:
+                index = temp.index("Followers")
+                number = int(temp_list[index])
+
+                if number > 100000:
+                    user = User()
+                    user['ID'] = page.xpath('.//div/@data-user-id').extract()[0]
+                    user['name'] = page.xpath('.//div/@data-name').extract()[0]
+                    user['screen_name'] = page.xpath('.//div/@data-screen-name').extract()[0]
+
+                    for i in range(0, len(items_labels)-1):
+                        if items_labels[i].extract() != "Lists" and items_labels[i].extract() != "Moments" :
+                            user[items_labels[i].extract()] = items.extract()[i]
+                    yield user
+
+                    url = self.url % (quote(self.query), '')
+                    yield http.Request(url, callback=self.parse_page)
+                    self.scrap_following()
+
+    def scrap_following(self):
+
+        browser = webdriver.PhantomJS(executable_path='C:/Users/moham/Desktop/phantomjs-2.1.1-windows/bin/phantomjs')
+        browser.get("https://twitter.com/" + self.query[1:] + "/following")
+        action = action_chains.ActionChains(browser)
+        
+        time.sleep(2)
+
+        username = browser.find_element_by_css_selector('.js-username-field.email-input.js-initial-focus')
+        username.send_keys('bvams2019@gmail.com')
+
+        password = browser.find_element_by_css_selector('.js-password-field')
+        password.send_keys('ilias2019!')
+
+        form = browser.find_element_by_css_selector('.submit.EdgeButton.EdgeButton--primary.EdgeButtom--medium')
+        form.submit()
+
+        SCROLL_PAUSE_TIME = 0.5
+        # Get scroll height
+        last_height = browser.execute_script("return document.body.scrollHeight")
+        
+        while True:
+            # Scroll down to bottom
+            browser.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+
+            # Wait to load page
+            time.sleep(SCROLL_PAUSE_TIME)
+
+            # Calculate new scroll height and compare with last scroll height
+            new_height = browser.execute_script("return document.body.scrollHeight")
+            if new_height == last_height:
+                break
+            last_height = new_height
+
+        element = browser.find_element_by_xpath("//body")
+        page = Selector(text=element.text)
+        info = (element.text).split()
+
+        self.saveUserPath = settings['SAVE_USER_FOLLOWERS_PATH']
+        mkdirs(self.saveUserPath)
+        savePath = os.path.join(self.saveUserPath, "following" + ".txt")
+        with open(savePath,'a+') as f:
+            for i in info:
+                if i.startswith('@') and len(i) > 1 and i != self.query:
+                    f.write(i)
+                    f.write("\n")
+        savePath = os.path.join(self.saveUserPath, "scrapped_users" + ".txt")        
+        with open(savePath,'a+') as f:
+            f.write(self.query)
+            f.write("\n")
+     
+            
+
+    def check_if_account_protected(self, response):
         data = response.read().decode("utf-8")
         page = Selector(text=data)
-        items_labels = page.xpath('//span[@class="ProfileNav-label"]/text()')
-        items = page.xpath('//span/@data-count')
+        protected_item_label = page.xpath('//span[@class="Icon Icon--protected"]')
 
-        user = User()
-        user['ID'] = page.xpath('.//div/@data-user-id').extract()[0]
-        user['name'] = page.xpath('.//div/@data-name').extract()[0]
-        user['screen_name'] = page.xpath('.//div/@data-screen-name').extract()[0]
-
-        for i in range(0, len(items_labels)-1):
-            if items_labels[i].extract() != "Lists" and items_labels[i].extract() != "Moments" :
-                user[items_labels[i].extract()] = items.extract()[i]
-        yield user
+        #if there is a protected icon on the the account it will return True
+        #otherwise it will return False if there isn't
+        if(len(protected_item_label) > 0):
+            return None, True
+        else:
+            return page, False
 
     def parse_tweets_block(self, html_page):
         page = Selector(text=html_page)
@@ -266,12 +294,12 @@ class TweetScraper(CrawlSpider):
 
 
     def check(self, stringToMatch):
+        
         saveUserPath = settings['SAVE_USER_FOLLOWERS_PATH']
         mkdirs(saveUserPath)
         savePath = os.path.join(saveUserPath, "scrapped_users" + ".txt")
-        with open(savePath, 'a+') as file:
+        with open(savePath, 'r+') as file:
             for line in file:
                 if stringToMatch == line:
                     return True
             return False
-        return False
