@@ -28,18 +28,23 @@ from TweetScraper.utils import mkdirs
 
 from urllib.request import urlopen
 
+from TweetScraper.spiders.preprocessor import testDictionary
+
+
 logger = logging.getLogger(__name__)
 
-#REQUIRED libraries
-#pip install requests
-#pip install selenium
-#http://phantomjs.org/download.html
 
-#might use
-#https://sites.google.com/a/chromium.org/chromedriver/downloads
+# REQUIRED libraries
+# pip install requests
+# pip install selenium
+# http://phantomjs.org/download.html
 
-#command used to start project
-#scrapy crawl TweetScraper -a query="@katyperry"
+# might use
+# https://sites.google.com/a/chromium.org/chromedriver/downloads
+
+# command used to start project
+# scrapy crawl TweetScraper -a query="@katyperry"
+
 
 class TweetScraper(CrawlSpider):
     name = 'TweetScraper'
@@ -55,12 +60,13 @@ class TweetScraper(CrawlSpider):
 
         self.url = self.url + "&q=from:" + "%s&src=typed&max_position=%s"
         self.profile_url = "https://twitter.com/" + self.query[1:]
-        self.profile_following = "https://twitter.com/" + self.query[1:] + "/following/"
+        self.profile_following = "https://twitter.com/" + \
+            self.query[1:] + "/following/"
 
         self.crawl_user = crawl_user
 
-    def start_requests(self):   
-        if not self.check(self.query + "\n"): 
+    def start_requests(self):
+        if not self.check(self.query + "\n"):
             yield http.Request(self.profile_url, callback=self.parse_profile_page)
 
     def parse_page(self, response):
@@ -72,7 +78,7 @@ class TweetScraper(CrawlSpider):
 
         # get next page
         min_position = data['min_position']
-        min_position = min_position.replace("+","%2B")
+        min_position = min_position.replace("+", "%2B")
         url = self.url % (quote(self.query), min_position)
         yield http.Request(url, callback=self.parse_page)
 
@@ -87,9 +93,9 @@ class TweetScraper(CrawlSpider):
             # data = response.read().decode("utf-8")
             print("hello")
             # page = Selector(text=data)
-            items_labels = page.xpath('//span[@class="ProfileNav-label"]/text()')
+            items_labels = page.xpath(
+                '//span[@class="ProfileNav-label"]/text()')
             items = page.xpath('//span/@data-count')
-            
 
             for i in range(0, len(items_labels)-1):
                 temp.append(items_labels[i].extract())
@@ -103,13 +109,16 @@ class TweetScraper(CrawlSpider):
 
                 if number > 100000:
                     user = User()
-                    user['ID'] = page.xpath('.//div/@data-user-id').extract()[0]
+                    user['ID'] = page.xpath(
+                        './/div/@data-user-id').extract()[0]
                     user['name'] = page.xpath('.//div/@data-name').extract()[0]
-                    user['screen_name'] = page.xpath('.//div/@data-screen-name').extract()[0]
+                    user['screen_name'] = page.xpath(
+                        './/div/@data-screen-name').extract()[0]
 
                     for i in range(0, len(items_labels)-1):
-                        if items_labels[i].extract() != "Lists" and items_labels[i].extract() != "Moments" :
-                            user[items_labels[i].extract()] = items.extract()[i]
+                        if items_labels[i].extract() != "Lists" and items_labels[i].extract() != "Moments":
+                            user[items_labels[i].extract()] = items.extract()[
+                                i]
                     yield user
 
                     url = self.url % (quote(self.query), '')
@@ -118,34 +127,40 @@ class TweetScraper(CrawlSpider):
 
     def scrap_following(self):
 
-        browser = webdriver.PhantomJS(executable_path='C:/Users/moham/Desktop/phantomjs-2.1.1-windows/bin/phantomjs')
+        browser = webdriver.PhantomJS(
+            executable_path='C:/Users/ShuaibReeyaz/Downloads/phantomjs-2.1.1-windows/bin/phantomjs')
         browser.get("https://twitter.com/" + self.query[1:] + "/following")
         action = action_chains.ActionChains(browser)
-        
+
         time.sleep(2)
 
-        username = browser.find_element_by_css_selector('.js-username-field.email-input.js-initial-focus')
+        username = browser.find_element_by_css_selector(
+            '.js-username-field.email-input.js-initial-focus')
         username.send_keys('bvams2019@gmail.com')
 
         password = browser.find_element_by_css_selector('.js-password-field')
         password.send_keys('ilias2019!')
 
-        form = browser.find_element_by_css_selector('.submit.EdgeButton.EdgeButton--primary.EdgeButtom--medium')
+        form = browser.find_element_by_css_selector(
+            '.submit.EdgeButton.EdgeButton--primary.EdgeButtom--medium')
         form.submit()
 
         SCROLL_PAUSE_TIME = 0.5
         # Get scroll height
-        last_height = browser.execute_script("return document.body.scrollHeight")
-        
+        last_height = browser.execute_script(
+            "return document.body.scrollHeight")
+
         while True:
             # Scroll down to bottom
-            browser.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            browser.execute_script(
+                "window.scrollTo(0, document.body.scrollHeight);")
 
             # Wait to load page
             time.sleep(SCROLL_PAUSE_TIME)
 
             # Calculate new scroll height and compare with last scroll height
-            new_height = browser.execute_script("return document.body.scrollHeight")
+            new_height = browser.execute_script(
+                "return document.body.scrollHeight")
             if new_height == last_height:
                 break
             last_height = new_height
@@ -157,25 +172,24 @@ class TweetScraper(CrawlSpider):
         self.saveUserPath = settings['SAVE_USER_FOLLOWERS_PATH']
         mkdirs(self.saveUserPath)
         savePath = os.path.join(self.saveUserPath, "following" + ".txt")
-        with open(savePath,'a+') as f:
+        with open(savePath, 'a+') as f:
             for i in info:
                 if i.startswith('@') and len(i) > 1 and i != self.query:
                     f.write(i)
                     f.write("\n")
-        savePath = os.path.join(self.saveUserPath, "scrapped_users" + ".txt")        
-        with open(savePath,'a+') as f:
+        savePath = os.path.join(self.saveUserPath, "scrapped_users" + ".txt")
+        with open(savePath, 'a+') as f:
             f.write(self.query)
             f.write("\n")
-     
-            
 
     def check_if_account_protected(self, response):
         data = response.read().decode("utf-8")
         page = Selector(text=data)
-        protected_item_label = page.xpath('//span[@class="Icon Icon--protected"]')
+        protected_item_label = page.xpath(
+            '//span[@class="Icon Icon--protected"]')
 
-        #if there is a protected icon on the the account it will return True
-        #otherwise it will return False if there isn't
+        # if there is a protected icon on the the account it will return True
+        # otherwise it will return False if there isn't
         if(len(protected_item_label) > 0):
             return None, True
         else:
@@ -184,7 +198,7 @@ class TweetScraper(CrawlSpider):
     def parse_tweets_block(self, html_page):
         page = Selector(text=html_page)
 
-        ### for text only tweets
+        # for text only tweets
         items = page.xpath('//li[@data-item-type="tweet"]/div')
         for item in self.parse_tweet_item(items):
             yield item
@@ -193,14 +207,15 @@ class TweetScraper(CrawlSpider):
         for item in items:
             try:
                 tweet = Tweet()
-                tweet['usernameTweet'] = item.xpath('.//span[@class="username u-dir u-textTruncate"]/b/text()').extract()[0]
+                tweet['usernameTweet'] = item.xpath(
+                    './/span[@class="username u-dir u-textTruncate"]/b/text()').extract()[0]
 
                 ID = item.xpath('.//@data-tweet-id').extract()
                 if not ID:
                     continue
                 tweet['ID'] = ID[0]
 
-                ### get text content
+                # get text content
                 tweet['text'] = ' '.join(
                     item.xpath('.//div[@class="js-tweet-text-container"]/p//text()').extract()).replace(' # ',
                                                                                                         '#').replace(
@@ -209,8 +224,9 @@ class TweetScraper(CrawlSpider):
                     # If there is not text, we ignore the tweet
                     continue
 
-                ### get meta data
-                tweet['url'] = item.xpath('.//@data-permalink-path').extract()[0]
+                # get meta data
+                tweet['url'] = item.xpath(
+                    './/@data-permalink-path').extract()[0]
 
                 nbr_retweet = item.css('span.ProfileTweet-action--retweet > span.ProfileTweet-actionCount').xpath(
                     '@data-tweet-stat-count').extract()
@@ -237,50 +253,65 @@ class TweetScraper(CrawlSpider):
                     item.xpath('.//div[@class="stream-item-header"]/small[@class="time"]/a/span/@data-time').extract()[
                         0])).strftime('%Y-%m-%d %H:%M:%S')
 
-                ### get photo
+                # get photo
                 has_cards = item.xpath('.//@data-card-type').extract()
                 if has_cards and has_cards[0] == 'photo':
                     tweet['has_image'] = True
-                    tweet['images'] = item.xpath('.//*/div/@data-image-url').extract()
-                elif has_cards:
-                    logger.debug('Not handle "data-card-type":\n%s' % item.xpath('.').extract()[0])
+                    tweet['images'] = item.xpath(
+                        './/*/div/@data-image-url').extract()
+                # elif has_cards:
+                #     logger.debug('Not handle "data-card-type":\n%s' %
+                #                  item.xpath('.').extract()[0])
 
-                ### get animated_gif
+                # get animated_gif
                 has_cards = item.xpath('.//@data-card2-type').extract()
                 if has_cards:
                     if has_cards[0] == 'animated_gif':
                         tweet['has_video'] = True
-                        tweet['videos'] = item.xpath('.//*/source/@video-src').extract()
+                        tweet['videos'] = item.xpath(
+                            './/*/source/@video-src').extract()
                     elif has_cards[0] == 'player':
                         tweet['has_media'] = True
-                        tweet['medias'] = item.xpath('.//*/div/@data-card-url').extract()
+                        tweet['medias'] = item.xpath(
+                            './/*/div/@data-card-url').extract()
                     elif has_cards[0] == 'summary_large_image':
                         tweet['has_media'] = True
-                        tweet['medias'] = item.xpath('.//*/div/@data-card-url').extract()
+                        tweet['medias'] = item.xpath(
+                            './/*/div/@data-card-url').extract()
                     elif has_cards[0] == 'amplify':
                         tweet['has_media'] = True
-                        tweet['medias'] = item.xpath('.//*/div/@data-card-url').extract()
+                        tweet['medias'] = item.xpath(
+                            './/*/div/@data-card-url').extract()
                     elif has_cards[0] == 'summary':
                         tweet['has_media'] = True
-                        tweet['medias'] = item.xpath('.//*/div/@data-card-url').extract()
+                        tweet['medias'] = item.xpath(
+                            './/*/div/@data-card-url').extract()
                     elif has_cards[0] == '__entity_video':
                         pass  # TODO
                         # tweet['has_media'] = True
                         # tweet['medias'] = item.xpath('.//*/div/@data-src').extract()
-                    else:  # there are many other types of card2 !!!!
-                        logger.debug('Not handle "data-card2-type":\n%s' % item.xpath('.').extract()[0])
+                    # else:  # there are many other types of card2 !!!!
+                    #     logger.debug('Not handle "data-card2-type":\n%s' %
+                    #                  item.xpath('.').extract()[0])
 
-                is_reply = item.xpath('.//div[@class="ReplyingToContextBelowAuthor"]').extract()
+                is_reply = item.xpath(
+                    './/div[@class="ReplyingToContextBelowAuthor"]').extract()
                 tweet['is_reply'] = is_reply != []
 
-                is_retweet = item.xpath('.//span[@class="js-retweet-text"]').extract()
+                is_retweet = item.xpath(
+                    './/span[@class="js-retweet-text"]').extract()
                 tweet['is_retweet'] = is_retweet != []
 
                 tweet['user_id'] = item.xpath('.//@data-user-id').extract()[0]
-                yield tweet
+
+                # print(tweet)
+                tweet['text'] = testDictionary(tweet)
+                if tweet['text'] != []:
+                    yield tweet
 
             except:
-                logger.error("Error tweet:\n%s" % item.xpath('.').extract()[0])
+                pass
+                # logger.error("Error tweet:\n%s" % item.xpath('.').extract()[0])
                 # raise
 
     def extract_one(self, selector, xpath, default=None):
@@ -292,13 +323,12 @@ class TweetScraper(CrawlSpider):
     def get_query(self):
         return self.query
 
-
     def check(self, stringToMatch):
-        
+
         saveUserPath = settings['SAVE_USER_FOLLOWERS_PATH']
         mkdirs(saveUserPath)
         savePath = os.path.join(saveUserPath, "scrapped_users" + ".txt")
-        with open(savePath, 'r+') as file:
+        with open(savePath, 'a+') as file:
             for line in file:
                 if stringToMatch == line:
                     return True

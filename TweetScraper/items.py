@@ -7,25 +7,26 @@ from scrapy import Item, Field
 class Tweet(Item):
     ID = Field()       # tweet id
     url = Field()      # tweet url
-    datetime = Field() # post time
+    datetime = Field()  # post time
     text = Field()     # text content
     user_id = Field()  # user id
-    usernameTweet = Field() # username of tweet
+    usernameTweet = Field()  # username of tweet
 
     nbr_retweet = Field()  # nbr of retweet
-    nbr_favorite = Field() # nbr of favorite
+    nbr_favorite = Field()  # nbr of favorite
     nbr_reply = Field()    # nbr of reply
 
+    # remove everything after, not relevant
     is_reply = Field()   # boolean if the tweet is a reply or not
-    is_retweet = Field() # boolean if the tweet is just a retweet of another tweet
+    is_retweet = Field()  # boolean if the tweet is just a retweet of another tweet
 
-    has_image = Field() # True/False, whether a tweet contains images
+    has_image = Field()  # True/False, whether a tweet contains images
     images = Field()    # a list of image urls, empty if none
 
-    has_video = Field() # True/False, whether a tweet contains videos
+    has_video = Field()  # True/False, whether a tweet contains videos
     videos = Field()    # a list of video urls
 
-    has_media = Field() # True/False, whether a tweet contains media (e.g. summary)
+    has_media = Field()  # True/False, whether a tweet contains media (e.g. summary)
     medias = Field()    # a list of media
 
 
@@ -38,4 +39,3 @@ class User(Item):
     Following = Field()
     Followers = Field()
     Likes = Field()
-    

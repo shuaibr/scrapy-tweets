@@ -67,22 +67,25 @@ def replace_abv(string):
 
 def testDictionary(filename, key, filename2):
     """Applying normalization to files"""
-    f = open(filename, "r")
-    f1 = f.readlines()
+    # f = open(filename, "r")
+    # f1 = f.readlines()
     test = {}
-    readf = open(filename2, 'a')
-    for x in f1:
-        test = eval(x)
-        y = test[key]
-        y = find(y)  # solo-0.30
-        if y != None:
-            y = replace_abv(y)  # solo-0.90 # 5k-10seconds
-            y = y.split(" ")  # solo-0.2705 w/-16.83
-        if y != None:
-            y = normalize(y)  # solo-102.13  #5k-20seconds
-        if y != None and len(y) != 0:
-            y = str(y)
-            readf.write(y+"\n")
+    # readf = open(filename2, 'a')
+    # f1 = filename
+    # for x in f1:
+
+    test = eval(x)
+    y = test[key]
+    y = find(y)  # solo-0.30
+    if y != None:
+        y = replace_abv(y)  # solo-0.90 # 5k-10seconds
+        y = y.split(" ")  # solo-0.2705 w/-16.83
+    if y != None:
+        y = normalize(y)  # solo-102.13  #5k-20seconds
+    if y != None and len(y) != 0:
+        y = str(y)
+        # readf.write(y+"\n")
+    return y+"\n"
 
 
 start_time = time.time()
